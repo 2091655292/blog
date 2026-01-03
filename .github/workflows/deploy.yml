@@ -1,0 +1,70 @@
+name: Hexo Blog CI/CD from Subdirectory
+
+# 触发条件：当代码推送到 main 分支时，自动运行此工作流
+on:
+  push:
+    branches: [ main ]
+  # 允许在GitHub网页上手动触发工作流
+  workflow_dispatch:
+
+# 定义一个名为 “build-and-deploy” 的任务
+jobs:
+  build-and-deploy:
+    # 任务运行在最新的 Ubuntu 虚拟环境
+    runs-on: ubuntu-latest
+
+    # 步骤序列
+    steps:
+      # 步骤 1: 检出你的仓库代码
+      - name: Checkout source code
+        uses: actions/checkout@v3
+        with:
+          # 如果你的 Hexo 主题是通过 git submodule 添加的，此项必须为 true
+          submodules: recursive 
+
+      # 步骤 2: 设置 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          # ！！！请修改此处：将 ‘18’ 改为你本地使用的Node.js主版本号（如 20, 22）！！！
+          node-version: ‘18’
+
+      # 步骤 3: 缓存 npm 模块以加速后续构建
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          # 缓存路径
+          path: ./my-blog/node_modules
+          # 生成缓存 key 的依据
+          key: ${{ runner.os }}-node-${{ hashFiles(‘**/my-blog/package-lock.json’) }}
+          # 如果未找到精确匹配的 key，则尝试恢复的旧 key 列表
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # 步骤 4: 安装项目依赖 (在 my-blog 目录下)
+      - name: Install Dependencies
+        run: |
+          cd my-blog
+          # 如果上一步有缓存，npm ci 会利用缓存快速安装；否则会重新下载
+          npm ci
+
+      # 步骤 5: 生成静态网站文件 (在 my-blog 目录下)
+      - name: Generate Static Files
+        run: |
+          cd my-blog
+          # 运行 Hexo 的生成命令，等同于 `hexo generate`
+          npm run build
+
+      # 步骤 6: 部署到 GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          # GitHub 会自动生成此令牌，用于操作你的仓库，你无需手动创建
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # ！！！关键配置：指定要发布的文件夹路径（相对于仓库根目录）！！！
+          publish_dir: ./my-blog/public
+          # 将静态文件部署到你的 pages 分支（通常是 `gh-pages` 或 `main`）
+          publish_branch: gh-pages
+          # 可选：保持提交历史干净，强制重写成一次全新提交
+          force_orphan: true
