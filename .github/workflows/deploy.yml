@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           # ！！！请修改此处：将 ‘18’ 改为你本地使用的Node.js主版本号（如 20, 22）！！！
-          node-version: ‘18’
+          node-version: ‘24’
 
       # 步骤 3: 缓存 npm 模块以加速后续构建
       - name: Cache npm dependencies
